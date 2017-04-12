@@ -1,0 +1,28 @@
+{
+  "upsert": {
+    "desc": "update or insert a new state branch",
+    "options": {
+      "params": {
+        "required": "branch",
+        "optional": "data"
+      }
+    }
+  },
+  "subscribe": {
+    "desc": "create a subscription feed",
+    "options": {
+      "params": {
+        "required": "feed",
+        "optional": "branches..."
+      }
+    }
+  },
+  "unsubscribe": {
+    "desc": "unsubscribe from a feed",
+    "options": {
+      "params": {
+        "required": "feed"
+      }
+    }
+  }
+}
