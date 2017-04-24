@@ -1,5 +1,6 @@
 {
   "upsert": {
+    "parallel": true,
     "desc": "update or insert a new state branch",
     "options": {
       "params": {
@@ -9,6 +10,7 @@
     }
   },
   "subscribe": {
+    "parallel": true,
     "desc": "create a subscription feed",
     "options": {
       "params": {
@@ -18,6 +20,7 @@
     }
   },
   "unsubscribe": {
+    "parallel": true,
     "desc": "unsubscribe from a feed",
     "options": {
       "params": {
