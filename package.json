@@ -9,7 +9,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "immutable": "^3.8.1",
     "xcraft-core-goblin": "^2.0.0"
   },
   "devDependencies": {
