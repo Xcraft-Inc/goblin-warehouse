@@ -27,5 +27,19 @@
         "required": "feed"
       }
     }
+  },
+  "save": {
+    "parallel": true,
+    "desc": "persist data warehouse state",
+    "options": {
+      "params": {}
+    }
+  },
+  "load": {
+    "parallel": true,
+    "desc": "load persisted data warehouse state",
+    "options": {
+      "params": {}
+    }
   }
 }
