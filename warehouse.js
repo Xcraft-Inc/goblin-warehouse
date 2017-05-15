@@ -29,6 +29,15 @@ exports.xcraftCommands = function () {
           },
         },
       },
+      resend: {
+        parallel: true,
+        desc: 'resend a subscription feed',
+        options: {
+          params: {
+            required: 'feed',
+          },
+        },
+      },
       unsubscribe: {
         parallel: true,
         desc: 'unsubscribe from a feed',
