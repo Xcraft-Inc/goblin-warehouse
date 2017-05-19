@@ -19,6 +19,16 @@ exports.xcraftCommands = function () {
           },
         },
       },
+      'feed.add': {
+        parallel: true,
+        desc: 'Add a branch to a feed',
+        options: {
+          params: {
+            required: 'feed',
+            optional: 'branch',
+          },
+        },
+      },
       subscribe: {
         parallel: true,
         desc: 'create a subscription feed',
