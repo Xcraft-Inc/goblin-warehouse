@@ -19,6 +19,15 @@ exports.xcraftCommands = function () {
           },
         },
       },
+      remove: {
+        parallel: true,
+        desc: 'remove a state branch',
+        options: {
+          params: {
+            required: 'branch',
+          },
+        },
+      },
       'feed.add': {
         parallel: true,
         desc: 'Add a branch to a feed',
