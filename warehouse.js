@@ -29,6 +29,16 @@ exports.xcraftCommands = function () {
           },
         },
       },
+      'feed.del': {
+        parallel: true,
+        desc: 'Delete a branch from a feed',
+        options: {
+          params: {
+            required: 'feed',
+            optional: 'branch',
+          },
+        },
+      },
       subscribe: {
         parallel: true,
         desc: 'create a subscription feed',
