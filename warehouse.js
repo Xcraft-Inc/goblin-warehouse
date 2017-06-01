@@ -30,7 +30,7 @@ exports.xcraftCommands = function () {
       },
       'feed.add': {
         parallel: true,
-        desc: 'Add a branch to a feed',
+        desc: 'add a branch to a feed',
         options: {
           params: {
             required: 'feed',
@@ -40,7 +40,7 @@ exports.xcraftCommands = function () {
       },
       'feed.del': {
         parallel: true,
-        desc: 'Delete a branch from a feed',
+        desc: 'delete a branch from a feed',
         options: {
           params: {
             required: 'feed',
