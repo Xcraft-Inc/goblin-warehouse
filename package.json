@@ -15,6 +15,7 @@
   "dependencies": {
     "immutable": "4.0.0-rc.4",
     "immutablediff": "github:Xcraft-Inc/immutable-js-diff",
+    "jsonviz": "^0.2.3",
     "transit-immutable-js": "^0.7.0",
     "xcraft-core-goblin": "^2.0.0"
   },
