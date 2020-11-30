@@ -13,7 +13,7 @@
     }
   },
   "dependencies": {
-    "immutable": "4.0.0-rc.4",
+    "immutable": "4.0.0-rc.12",
     "immutablediff": "github:Xcraft-Inc/immutable-js-diff",
     "jsonviz": "^0.2.3",
     "lodash": "^4.17.11",
