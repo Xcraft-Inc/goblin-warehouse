@@ -17,7 +17,7 @@
     "immutablediff": "github:Xcraft-Inc/immutable-js-diff",
     "jsonviz": "^0.2.3",
     "lodash": "^4.17.11",
-    "transit-immutable-js": "^0.7.0",
+    "transit-immutable-js": "^0.8.0",
     "xcraft-core-busclient": "^4.0.1",
     "xcraft-core-goblin": "^4.0.1"
   },
