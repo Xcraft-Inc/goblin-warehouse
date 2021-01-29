@@ -172,7 +172,7 @@ class SubscriptionTree extends Widget {
 }
 
 const Tree1 = Widget.connect((state, props) => {
-  return {tree: state.get(`backend.${props.id}.tree1`), level: 1};
+  return {tree: state.get(`backend.${props.id}.tree1`)};
 })(SubscriptionTree);
 
 class WarehouseExplorer extends Widget {
