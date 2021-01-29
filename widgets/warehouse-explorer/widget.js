@@ -117,11 +117,23 @@ function expandTree(tree, id = 0) {
   if (!tree || !tree.entries) {
     return [];
   }
-  return Array.from(tree.entries()).map((entry) => ({
-    id: `${entry[0]}.${id++}`,
-    branch: entry[0],
-    rows: expandTree(entry[1], id),
-  }));
+  return Array.from(tree.entries())
+    .sort((a, b) => {
+      const x = a[0].toLowerCase();
+      const y = b[0].toLowerCase();
+      if (x < y) {
+        return -1;
+      }
+      if (x > y) {
+        return 1;
+      }
+      return 0;
+    })
+    .map((entry) => ({
+      id: `${entry[0]}.${id++}`,
+      branch: entry[0],
+      rows: expandTree(entry[1], id),
+    }));
 }
 
 class SubscriptionTree extends Widget {
