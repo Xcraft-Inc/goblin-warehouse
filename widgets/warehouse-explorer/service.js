@@ -27,7 +27,14 @@ const logicHandlers = {
       elements: [],
       tree1: {},
       tree2: {},
+      dangling: null,
+      orphan: null,
     });
+  },
+  check: (state, action) => {
+    return state
+      .set('dangling', action.get('dangling'))
+      .set('orphan', action.get('orphan'));
   },
   explore: (state, action) => {
     const sub = action.get('sub');
@@ -85,6 +92,12 @@ Goblin.registerQuest(goblinName, 'explore', function* (quest, type, value) {
       }
       break;
   }
+});
+
+Goblin.registerQuest(goblinName, 'check', function* (quest) {
+  const dangling = yield quest.warehouse.checkDangling();
+  const orphan = yield quest.warehouse.checkOrphan();
+  quest.do({dangling, orphan});
 });
 
 Goblin.registerQuest(goblinName, 'delete', function (quest) {});

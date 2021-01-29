@@ -150,10 +150,15 @@ class WarehouseExplorer extends Widget {
   constructor() {
     super(...arguments);
     this.explore = this.explore.bind(this);
+    this.check = this.check.bind(this);
   }
 
   explore(type, value) {
     this.doFor(this.props.id, 'explore', {type, value});
+  }
+
+  check() {
+    this.doFor(this.props.id, 'check');
   }
 
   render() {
@@ -196,6 +201,8 @@ const Explorer = Widget.connect((state, props) => {
   return {
     subs: state.get(`backend.${props.id}.subs`),
     sub: state.get(`backend.${props.id}.sub`),
+    orphan: state.get(`backend.${props.id}.orphan`),
+    dangling: state.get(`backend.${props.id}.dangling`),
   };
 })(WarehouseExplorer);
 
