@@ -13,8 +13,8 @@
     }
   },
   "dependencies": {
+    "goblin-warehouse-store": "^1.0.0",
     "immutable": "4.0.0-rc.14",
-    "immutablediff": "github:Xcraft-Inc/immutable-js-diff",
     "jsonviz": "^0.2.3",
     "lodash": "^4.17.11",
     "xcraft-core-busclient": "^5.0.0",
