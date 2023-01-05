@@ -18,7 +18,7 @@
     "jsonviz": "^0.2.3",
     "lodash": "^4.17.11",
     "xcraft-core-busclient": "^5.0.0",
-    "xcraft-core-goblin": "^5.0.0",
+    "xcraft-core-goblin": "^5.7.0",
     "xcraft-core-utils": "^4.0.0"
   },
   "devDependencies": {
