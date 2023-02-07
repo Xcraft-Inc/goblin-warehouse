@@ -14,12 +14,12 @@
   },
   "dependencies": {
     "immutable": "4.0.0-rc.14",
-    "immutablediff": "github:Xcraft-Inc/immutable-js-diff",
     "jsonviz": "^0.2.3",
     "lodash": "^4.17.11",
     "xcraft-core-busclient": "^5.0.0",
     "xcraft-core-goblin": "^5.7.0",
-    "xcraft-core-utils": "^4.0.0"
+    "xcraft-core-utils": "^4.0.0",
+    "xcraft-immutablediff": "^1.0.0"
   },
   "devDependencies": {
     "cytoscape-cose-bilkent": "^4.1.0",
