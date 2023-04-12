@@ -27,7 +27,7 @@
     "prettier": "2.0.4",
     "react-cytoscapejs": "^1.2.1",
     "xcraft-dev-prettier": "^2.0.0",
-    "xcraft-dev-rules": "^2.0.0"
+    "xcraft-dev-rules": "^4.1.0"
   },
   "prettier": "xcraft-dev-prettier"
 }
