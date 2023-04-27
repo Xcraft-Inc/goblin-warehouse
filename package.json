@@ -1,6 +1,6 @@
 {
   "name": "goblin-warehouse",
-  "version": "4.0.3",
+  "version": "4.0.7",
   "description": "warehouse goblin",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -27,7 +27,7 @@
     "prettier": "2.0.4",
     "react-cytoscapejs": "^1.2.1",
     "xcraft-dev-prettier": "^2.0.0",
-    "xcraft-dev-rules": "^2.0.0"
+    "xcraft-dev-rules": "^4.1.0"
   },
   "prettier": "xcraft-dev-prettier"
 }
