@@ -1,6 +1,6 @@
 {
   "name": "goblin-warehouse",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "warehouse goblin",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
