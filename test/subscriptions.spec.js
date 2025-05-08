@@ -30,7 +30,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('upsertHas', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       expect(await this.quest.warehouse.has({path: 'tests@stay'})).is.equals(
         false
@@ -46,7 +46,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('collectSingle', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       expect(await this.quest.warehouse.has({path: 'tests@1'})).is.equals(
         false
@@ -67,7 +67,7 @@ describe('goblin.warehouse.subscriptions', function () {
    *   |- tests@2
    */
   it('collectSimpleCascade', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function collectSimpleCascade() {
       expect(await this.quest.warehouse.has({path: 'tests@0'})).is.equals(
         false
@@ -134,7 +134,7 @@ describe('goblin.warehouse.subscriptions', function () {
    *     |- tests@5
    */
   it('collectMultiCascade', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function (quest) {
       expect(await this.quest.warehouse.has({path: 'tests@0'})).is.equals(
         false
@@ -249,7 +249,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('collectedBecauseNoSubscriber', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       expect(await this.quest.warehouse.has({path: 'tests@1'})).is.equals(
         false
@@ -268,7 +268,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('subAndUnsubFeed', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       const basePath = '_subscriptions.tests1.branches.';
       expect(
@@ -295,7 +295,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('subTwoFeeds', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       const basePath = '_subscriptions.tests';
 
@@ -377,7 +377,7 @@ describe('goblin.warehouse.subscriptions', function () {
    *   |- tests@3
    */
   it('subTwoDeepFeeds', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       const basePath = '_subscriptions.tests';
 
@@ -478,7 +478,7 @@ describe('goblin.warehouse.subscriptions', function () {
    *    subscriptions: tests@2, tests@3, tests@4, tests@5
    */
   it('subExtraDeepFeeds', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       const basePath = '_subscriptions.tests';
 
@@ -605,7 +605,7 @@ describe('goblin.warehouse.subscriptions', function () {
   });
 
   it('attachParents', async function () {
-    this.timeout(60000);
+    this.timeout(30000);
     await runner.it(async function () {
       const basePath = '_subscriptions.tests';
 
