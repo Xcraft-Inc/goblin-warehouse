@@ -47,15 +47,15 @@ Le warehouse dispose d'un mode de maintenance qui permet de restreindre les opé
 // Créer un feed et s'y abonner
 await warehouse.subscribe({
   feed: 'myFeed',
-  branches: ['myEntity@1', 'myEntity@2']
+  branches: ['myEntity@1', 'myEntity@2'],
 });
 
 // Ajouter une entité au warehouse et l'attacher à un feed
 await warehouse.upsert({
   branch: 'myEntity@3',
-  data: { id: 'myEntity@3', value: 'some data' },
+  data: {id: 'myEntity@3', value: 'some data'},
   feeds: 'myFeed',
-  parents: 'myEntity@1'
+  parents: 'myEntity@1',
 });
 ```
 
@@ -64,15 +64,15 @@ await warehouse.upsert({
 ```javascript
 // Obtenir une valeur spécifique
 const value = await warehouse.get({
-  path: 'myEntity@1.value'
+  path: 'myEntity@1.value',
 });
 
 // Effectuer une requête filtrée
 const results = await warehouse.query({
   feed: 'myFeed',
   type: 'myEntity',
-  filter: { status: 'active' },
-  view: ['id', 'value']
+  filter: {status: 'active'},
+  view: ['id', 'value'],
 });
 ```
 
@@ -83,14 +83,14 @@ const results = await warehouse.query({
 await warehouse.attachToParents({
   branch: 'myEntity@3',
   parents: ['myEntity@1', 'myEntity@2'],
-  feeds: 'myFeed'
+  feeds: 'myFeed',
 });
 
 // Détacher une branche de ses parents
 await warehouse.detachFromParents({
   branch: 'myEntity@3',
   parents: ['myEntity@1'],
-  feed: 'myFeed'
+  feed: 'myFeed',
 });
 ```
 
@@ -105,7 +105,7 @@ const dangling = await warehouse.checkDangling();
 await warehouse.graph({
   output: '/path/to/output',
   format: 'svg',
-  memory: '256'
+  memory: '256',
 });
 ```
 
@@ -113,10 +113,10 @@ await warehouse.graph({
 
 Le warehouse est un composant fondamental de l'architecture Xcraft et interagit avec de nombreux autres modules:
 
-- **xcraft-core-goblin** : Utilise les mécanismes de base de Goblin pour la gestion des quêtes et des événements
-- **xcraft-core-utils** : Utilise des utilitaires comme MapAggregator pour la gestion efficace des mises à jour
-- **xcraft-immutablediff** : Calcule les différences entre les états pour optimiser les mises à jour
-- **goblin-laboratory** : Fournit des données aux composants React via le système de feeds
+- [**xcraft-core-goblin**][1] : Utilise les mécanismes de base de Goblin pour la gestion des quêtes et des événements
+- [**xcraft-core-utils**][2] : Utilise des utilitaires comme MapAggregator pour la gestion efficace des mises à jour
+- [**xcraft-immutablediff**][3] : Calcule les différences entre les états pour optimiser les mises à jour
+- [**goblin-laboratory**][4] : Fournit des données aux composants React via le système de feeds
 
 ## Détails des sources
 
@@ -174,12 +174,14 @@ Service Goblin qui alimente l'explorateur du warehouse:
 ### `warehouse-explorer/view.js`
 
 Composant React qui définit la vue principale de l'explorateur de warehouse. Il intègre:
+
 - Un conteneur principal avec un titre
 - Le composant Explorer qui affiche les données du warehouse
 
 ### `warehouse-explorer/styles.js`
 
 Définit les styles CSS pour l'explorateur de warehouse, notamment:
+
 - Le style de l'arbre de visualisation avec flexbox pour une mise en page adaptative
 - Les dimensions et le padding des éléments
 
@@ -190,6 +192,7 @@ Configuration ESLint pour le module, définissant les règles de style de code e
 ### `test/subscriptions.spec.js`
 
 Contient des tests unitaires pour vérifier le bon fonctionnement du système de souscriptions du warehouse:
+
 - Tests de création et suppression de branches
 - Tests de cascade de suppression (lorsqu'un parent est supprimé)
 - Tests de gestion des relations entre branches dans différents feeds
@@ -197,4 +200,9 @@ Contient des tests unitaires pour vérifier le bon fonctionnement du système de
 
 Ces tests garantissent que le système de propriété et de garbage collection fonctionne correctement dans différents scénarios.
 
-*Cette documentation a été mise à jour automatiquement.*
+_Cette documentation a été mise à jour automatiquement._
+
+[1]: https://github.com/Xcraft-Inc/xcraft-core-goblin
+[2]: https://github.com/Xcraft-Inc/xcraft-core-utils
+[3]: https://github.com/Xcraft-Inc/immutable-js-diff
+[4]: https://github.com/Xcraft-Inc/goblin-laboratory
