@@ -782,7 +782,7 @@ describe('goblin.warehouse', function () {
     });
   });
 
-  describe('move branches', function () {
+  describe('copy branches', function () {
     /* FEED A
      * |- tests@1
      * | |- tests@3
