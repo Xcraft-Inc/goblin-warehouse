@@ -781,4 +781,206 @@ describe('goblin.warehouse', function () {
       });
     });
   });
+
+  describe('move branches', function () {
+    /* FEED A
+     * |- tests@1
+     * | |- tests@3
+     * | | |- tests@4
+     * | |   |- tests@5
+     * | |- tests@5
+     * |- tests@2
+     *   |- tests@3
+     *   |- tests@4
+     *     |- tests@5
+     *
+     * FEED B                 FEED B
+     * |- tests@6             |- tests@6
+     *                        |- tests@1
+     *                    =>  | |- tests@3
+     *                        |   |- tests@4
+     *                        |- tests@2
+     *                        |  |- tests@3
+     *                           |- tests@4
+     *
+     * BEFORE
+     *  feed: feedA
+     *    subscriptions: tests@1, tests@2
+     *  feed: feedB
+     *    subscriptions: tests@6
+     *
+     * AFTER
+     *  feed: tests1
+     *    subscriptions: tests@1, tests@2
+     *  feed: tests2
+     *    subscriptions: tests@1, tests@2, tests@6
+     */
+    it('graft', async function () {
+      this.timeout(10000);
+      await runner.it(async function () {
+        await this.quest.warehouse.subscribe({
+          feed: 'feedA',
+          branches: ['tests@1', 'tests@2'],
+        });
+        await this.quest.warehouse.subscribe({
+          feed: 'feedB',
+          branches: ['tests@6'],
+        });
+
+        await this.quest.warehouse.upsert({
+          branch: 'tests@3',
+          data: {id: 'tests@3'},
+          feeds: 'feedA',
+          parents: 'tests@1',
+        });
+        await this.quest.warehouse.upsert({
+          branch: 'tests@3',
+          data: {id: 'tests@3'},
+          feeds: 'feedA',
+          parents: 'tests@2',
+        });
+        await this.quest.warehouse.upsert({
+          branch: 'tests@4',
+          data: {id: 'tests@4'},
+          feeds: 'feedA',
+          parents: 'tests@2',
+        });
+        await this.quest.warehouse.upsert({
+          branch: 'tests@4',
+          data: {id: 'tests@4'},
+          feeds: 'feedA',
+          parents: 'tests@3',
+        });
+        await this.quest.warehouse.upsert({
+          branch: 'tests@5',
+          data: {id: 'tests@5'},
+          feeds: 'feedA',
+          parents: 'tests@1',
+        });
+        await this.quest.warehouse.upsert({
+          branch: 'tests@5',
+          data: {id: 'tests@5'},
+          feeds: 'feedA',
+          parents: 'tests@4',
+        });
+
+        let state;
+        state = await this.quest.getState('warehouse');
+        state = state.toJS();
+        expect(state._subscriptions.feedA.branches).to.be.eql({
+          ['tests@1']: {
+            parents: {
+              ['tests@1']: true,
+            },
+            children: {
+              ['tests@1']: true,
+              ['tests@3']: true,
+              ['tests@5']: true,
+            },
+          },
+          ['tests@2']: {
+            parents: {
+              ['tests@2']: true,
+            },
+            children: {
+              ['tests@2']: true,
+              ['tests@3']: true,
+              ['tests@4']: true,
+            },
+          },
+          ['tests@3']: {
+            parents: {
+              ['tests@1']: true,
+              ['tests@2']: true,
+            },
+            children: {
+              ['tests@4']: true,
+            },
+          },
+          ['tests@4']: {
+            parents: {
+              ['tests@2']: true,
+              ['tests@3']: true,
+            },
+            children: {
+              ['tests@5']: true,
+            },
+          },
+          ['tests@5']: {
+            parents: {
+              ['tests@1']: true,
+              ['tests@4']: true,
+            },
+            children: {},
+          },
+        });
+
+        expect(state._subscriptions.feedB.branches).to.be.eql({
+          ['tests@6']: {
+            parents: {
+              ['tests@6']: true,
+            },
+            children: {
+              ['tests@6']: true,
+            },
+          },
+        });
+
+        await this.quest.warehouse.graft({
+          branch: 'tests@4',
+          fromFeed: 'feedA',
+          toFeed: 'feedB',
+        });
+
+        state = await this.quest.getState('warehouse');
+        state = state.toJS();
+
+        expect(state._subscriptions.feedB.branches).to.be.eql({
+          ['tests@1']: {
+            parents: {
+              ['tests@1']: true,
+            },
+            children: {
+              ['tests@1']: true,
+              ['tests@3']: true,
+            },
+          },
+          ['tests@2']: {
+            parents: {
+              ['tests@2']: true,
+            },
+            children: {
+              ['tests@2']: true,
+              ['tests@3']: true,
+              ['tests@4']: true,
+            },
+          },
+          ['tests@3']: {
+            parents: {
+              ['tests@1']: true,
+              ['tests@2']: true,
+            },
+            children: {
+              ['tests@4']: true,
+            },
+          },
+          ['tests@4']: {
+            parents: {
+              ['tests@2']: true,
+              ['tests@3']: true,
+            },
+            children: {},
+          },
+          ['tests@6']: {
+            parents: {
+              ['tests@6']: true,
+            },
+            children: {
+              ['tests@6']: true,
+            },
+          },
+        });
+      });
+    });
+  });
 });
