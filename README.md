@@ -113,10 +113,10 @@ await warehouse.graph({
 
 Le warehouse est un composant fondamental de l'architecture Xcraft et interagit avec de nombreux autres modules:
 
-- [**xcraft-core-goblin**][1] : Utilise les mécanismes de base de Goblin pour la gestion des quêtes et des événements
-- [**xcraft-core-utils**][2] : Utilise des utilitaires comme MapAggregator pour la gestion efficace des mises à jour
-- [**xcraft-immutablediff**][3] : Calcule les différences entre les états pour optimiser les mises à jour
-- [**goblin-laboratory**][4] : Fournit des données aux composants React via le système de feeds
+- **[xcraft-core-goblin]** : Utilise les mécanismes de base de Goblin pour la gestion des quêtes et des événements
+- **[xcraft-core-utils]** : Utilise des utilitaires comme MapAggregator pour la gestion efficace des mises à jour
+- **[xcraft-immutablediff]** : Calcule les différences entre les états pour optimiser les mises à jour
+- **[goblin-laboratory]** : Fournit des données aux composants React via le système de feeds
 
 ## Détails des sources
 
@@ -202,7 +202,7 @@ Ces tests garantissent que le système de propriété et de garbage collection f
 
 _Cette documentation a été mise à jour automatiquement._
 
-[1]: https://github.com/Xcraft-Inc/xcraft-core-goblin
-[2]: https://github.com/Xcraft-Inc/xcraft-core-utils
-[3]: https://github.com/Xcraft-Inc/immutable-js-diff
-[4]: https://github.com/Xcraft-Inc/goblin-laboratory
+[xcraft-core-goblin]: https://github.com/Xcraft-Inc/xcraft-core-goblin
+[xcraft-core-utils]: https://github.com/Xcraft-Inc/xcraft-core-utils
+[immutable-js-diff]: https://github.com/Xcraft-Inc/immutable-js-diff
+[goblin-laboratory]: https://github.com/Xcraft-Inc/goblin-laboratory
