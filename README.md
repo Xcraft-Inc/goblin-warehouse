@@ -104,8 +104,6 @@ const dangling = await warehouse.checkDangling();
 // Générer une représentation graphique de l'état du warehouse
 await warehouse.graph({
   output: '/path/to/output',
-  format: 'svg',
-  memory: '256',
 });
 ```
 
@@ -204,5 +202,5 @@ _Cette documentation a été mise à jour automatiquement._
 
 [xcraft-core-goblin]: https://github.com/Xcraft-Inc/xcraft-core-goblin
 [xcraft-core-utils]: https://github.com/Xcraft-Inc/xcraft-core-utils
-[immutable-js-diff]: https://github.com/Xcraft-Inc/immutable-js-diff
+[xcraft-immutablediff]: https://github.com/Xcraft-Inc/immutable-js-diff
 [goblin-laboratory]: https://github.com/Xcraft-Inc/goblin-laboratory
