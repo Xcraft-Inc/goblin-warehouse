@@ -45,13 +45,13 @@ Le warehouse dispose d'un mode de maintenance qui permet de restreindre les opé
 
 ```javascript
 // Créer un feed et s'y abonner
-await warehouse.subscribe({
+await this.quest.warehouse.subscribe({
   feed: 'myFeed',
   branches: ['myEntity@1', 'myEntity@2'],
 });
 
 // Ajouter une entité au warehouse et l'attacher à un feed
-await warehouse.upsert({
+await this.quest.warehouse.upsert({
   branch: 'myEntity@3',
   data: {id: 'myEntity@3', value: 'some data'},
   feeds: 'myFeed',
@@ -63,12 +63,12 @@ await warehouse.upsert({
 
 ```javascript
 // Obtenir une valeur spécifique
-const value = await warehouse.get({
+const value = await this.quest.warehouse.get({
   path: 'myEntity@1.value',
 });
 
 // Effectuer une requête filtrée
-const results = await warehouse.query({
+const results = await this.quest.warehouse.query({
   feed: 'myFeed',
   type: 'myEntity',
   filter: {status: 'active'},
@@ -80,14 +80,14 @@ const results = await warehouse.query({
 
 ```javascript
 // Attacher une branche à des parents
-await warehouse.attachToParents({
+await this.quest.warehouse.attachToParents({
   branch: 'myEntity@3',
   parents: ['myEntity@1', 'myEntity@2'],
   feeds: 'myFeed',
 });
 
 // Détacher une branche de ses parents
-await warehouse.detachFromParents({
+await this.quest.warehouse.detachFromParents({
   branch: 'myEntity@3',
   parents: ['myEntity@1'],
   feed: 'myFeed',
@@ -98,11 +98,11 @@ await warehouse.detachFromParents({
 
 ```javascript
 // Vérifier les branches orphelines et pendantes
-const orphans = await warehouse.checkOrphan();
-const dangling = await warehouse.checkDangling();
+const orphans = await this.quest.warehouse.checkOrphan();
+const dangling = await this.quest.warehouse.checkDangling();
 
 // Générer une représentation graphique de l'état du warehouse
-await warehouse.graph({
+await this.quest.warehouse.graph({
   output: '/path/to/output',
 });
 ```
@@ -129,6 +129,34 @@ Ce fichier contient le service principal du warehouse. Il définit:
 
 Le service gère le cycle de vie complet des branches, depuis leur création jusqu'à leur suppression, en passant par la gestion de leurs relations et la notification des changements.
 
+#### Méthodes publiques principales
+
+**`upsert(branch, data, parents, feeds, generation)`** - Ajoute ou met à jour une branche dans le warehouse avec les données fournies, en établissant des relations avec les parents spécifiés et en l'attachant aux feeds indiqués.
+
+**`get(path, view)`** - Récupère les données à un chemin spécifique, avec une vue optionnelle pour filtrer les propriétés retournées.
+
+**`query(feed, ids, type, filter, view)`** - Effectue une requête sur le warehouse pour trouver des branches correspondant aux critères spécifiés.
+
+**`subscribe(feed, branches)`** - Crée un abonnement à un feed pour recevoir les mises à jour des branches spécifiées.
+
+**`unsubscribe(feed)`** - Supprime un abonnement à un feed.
+
+**`attachToParents(branch, parents, feeds, view)`** - Attache une branche à des parents spécifiés dans les feeds indiqués.
+
+**`detachFromParents(branch, parents, feed)`** - Détache une branche de ses parents spécifiés dans un feed particulier.
+
+**`deleteBranch(branch)`** - Supprime une branche du warehouse et met à jour toutes les relations.
+
+**`maintenance(enable, description, orcName)`** - Active ou désactive le mode maintenance du warehouse, limitant les opérations aux processus autorisés.
+
+**`syncChanges(feed)`** - Force la synchronisation des changements pour un feed spécifique.
+
+**`listFeeds()`** - Retourne la liste des feeds disponibles dans le warehouse.
+
+**`check()`** - Vérifie l'intégrité du warehouse en recherchant les branches orphelines et pendantes.
+
+**`graph(output)`** - Génère une représentation graphique de l'état du warehouse au format DOT.
+
 ### `garbageCollector.js`
 
 Implémente le système de nettoyage automatique des branches non référencées. Principales fonctionnalités:
@@ -139,6 +167,12 @@ Implémente le système de nettoyage automatique des branches non référencées
 - `_purgeCollectable`: Envoie des événements pour les branches supprimées
 
 La classe `GarbageCollector` utilise un mécanisme de debounce pour regrouper les opérations de nettoyage et optimiser les performances.
+
+#### Fonctionnement du Garbage Collector
+
+Le garbage collector surveille les relations entre les branches et identifie celles qui ne sont plus référencées par aucun parent. Lorsqu'une branche devient orpheline, elle est marquée comme "collectable" et sera supprimée lors du prochain cycle de nettoyage.
+
+Le processus de nettoyage est optimisé par un mécanisme de debounce qui regroupe les opérations de suppression pour éviter de surcharger le système avec de nombreuses petites opérations.
 
 ### `dotHelpers.js`
 
@@ -182,10 +216,6 @@ Définit les styles CSS pour l'explorateur de warehouse, notamment:
 
 - Le style de l'arbre de visualisation avec flexbox pour une mise en page adaptative
 - Les dimensions et le padding des éléments
-
-### `eslint.config.js`
-
-Configuration ESLint pour le module, définissant les règles de style de code et les plugins utilisés (React, JSDoc, Babel). Cette configuration assure la cohérence du code dans l'ensemble du module.
 
 ### `test/subscriptions.spec.js`
 
