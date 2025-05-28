@@ -119,6 +119,82 @@ Vérifie l'intégrité du warehouse en recherchant les branches orphelines et pe
 
 Génère une représentation graphique de l'état du warehouse au format DOT.
 
+#### `syncChanges(feed)`
+
+Force la synchronisation des changements pour un feed spécifique.
+
+#### `listFeeds()`
+
+Retourne la liste des feeds actifs (excluant 'system' et 'null').
+
+#### `release(branch)`
+
+Supprime une branche et émet un événement de libération.
+
+#### `graft(branch, fromFeed, toFeed)`
+
+Copie une branche et ses parents d'un feed vers un autre feed.
+
+#### `acknowledge(branch, generation)`
+
+Confirme la réception d'une branche avec sa génération spécifique.
+
+#### `feedSubscriptionAdd(feed, branch, parents)`
+
+Ajoute une branche à un feed avec des parents spécifiés.
+
+#### `feedSubscriptionDel(feed, branch, parents)`
+
+Supprime une branche d'un feed en la détachant de ses parents.
+
+#### `getBranchSubscriptions(branch, filters)`
+
+Retourne la liste des feeds qui contiennent une branche spécifique.
+
+#### `hasFeed(feedName)`
+
+Vérifie si un feed existe dans les subscriptions.
+
+#### `has(path)`
+
+Vérifie si un chemin existe dans l'état du warehouse.
+
+#### `getCreator(branch)`
+
+Retourne le créateur d'une branche spécifique.
+
+#### `delCreator(branch)`
+
+Supprime l'information du créateur d'une branche.
+
+#### `removeBatch(branches)`
+
+Supprime un lot de branches en une seule opération.
+
+#### `upsertInBatch(branches, parents, feeds)`
+
+Ajoute ou met à jour plusieurs branches en une seule opération.
+
+#### `resend(feed)`
+
+Renvoie l'état complet d'un feed aux abonnés.
+
+#### `requestLineUpdate(type, lineId, orcName, token, generation)`
+
+Gère les mises à jour de lignes pour le système de notification.
+
+#### `status()`
+
+Affiche des informations de débogage sur l'état du warehouse.
+
+#### `checkOrphan()`
+
+Retourne la liste des branches orphelines (avec des parents manquants).
+
+#### `checkDangling()`
+
+Retourne la liste des branches pendantes (non référencées dans les feeds).
+
 ## Exemples d'utilisation
 
 ### Création et abonnement à un feed
@@ -187,6 +263,52 @@ await this.quest.warehouse.graph({
 });
 ```
 
+### Gestion des feeds
+
+```javascript
+// Lister tous les feeds actifs
+const feeds = await this.quest.warehouse.listFeeds();
+
+// Vérifier si un feed existe
+const exists = await this.quest.warehouse.hasFeed({feedName: 'myFeed'});
+
+// Forcer la synchronisation d'un feed
+await this.quest.warehouse.syncChanges({feed: 'myFeed'});
+
+// Renvoyer l'état complet d'un feed
+await this.quest.warehouse.resend({feed: 'myFeed'});
+```
+
+### Opérations par lot
+
+```javascript
+// Ajouter plusieurs branches en une fois
+await this.quest.warehouse.upsertInBatch({
+  branches: {
+    'entity@1': {id: 'entity@1', value: 'data1'},
+    'entity@2': {id: 'entity@2', value: 'data2'},
+  },
+  parents: 'root@1',
+  feeds: 'myFeed',
+});
+
+// Supprimer plusieurs branches
+await this.quest.warehouse.removeBatch({
+  branches: ['entity@1', 'entity@2'],
+});
+```
+
+### Greffage de branches
+
+```javascript
+// Copier une branche d'un feed vers un autre
+await this.quest.warehouse.graft({
+  branch: 'myEntity@1',
+  fromFeed: 'sourceFeed',
+  toFeed: 'targetFeed',
+});
+```
+
 ## Explorateur de warehouse
 
 Le module inclut un explorateur visuel (`warehouse-explorer`) qui permet de :
@@ -198,6 +320,13 @@ Le module inclut un explorateur visuel (`warehouse-explorer`) qui permet de :
 
 L'explorateur utilise Cytoscape.js pour la visualisation graphique et l'algorithme de disposition "dagre" pour organiser les nœuds de manière hiérarchique.
 
+### Fonctionnalités de l'explorateur
+
+- **Vue en arbre** : Affiche la hiérarchie des branches dans chaque feed
+- **Graphe interactif** : Visualisation des relations parent-enfant avec Cytoscape.js
+- **Détection d'anomalies** : Identification des branches orphelines et pendantes
+- **Navigation** : Interface intuitive pour explorer les différents feeds
+
 ## Tests
 
 Le module inclut une suite de tests complète (`test/subscriptions.spec.js`) qui vérifie :
@@ -206,6 +335,18 @@ Le module inclut une suite de tests complète (`test/subscriptions.spec.js`) qui
 - Les cascades de suppression multi-niveaux
 - La gestion des relations entre branches dans différents feeds
 - L'intégrité du système de propriété et de garbage collection
+- Les opérations de greffage entre feeds
+- La gestion des abonnements multiples
+
+### Tests spécifiques
+
+- **`upsertHas`** : Vérification de l'ajout et de la présence de branches
+- **`collectSingle`** : Test du garbage collection pour les branches orphelines
+- **`collectSimpleCascade`** : Test des cascades de suppression simples
+- **`collectMultiCascade`** : Test des cascades de suppression complexes
+- **`subAndUnsubFeed`** : Test des abonnements et désabonnements
+- **`subTwoFeeds`** : Test de la gestion de branches dans plusieurs feeds
+- **`graft`** : Test du greffage de branches entre feeds
 
 ## Interactions avec d'autres modules
 
@@ -215,6 +356,8 @@ Le warehouse est un composant fondamental de l'architecture Xcraft et interagit 
 - **[xcraft-core-utils]** : Utilise des utilitaires comme MapAggregator pour la gestion efficace des mises à jour
 - **[xcraft-immutablediff]** : Calcule les différences entre les états pour optimiser les mises à jour
 - **[goblin-laboratory]** : Fournit des données aux composants React via le système de feeds
+- **[xcraft-core-busclient]** : Communication avec le bus Xcraft pour les événements
+- **[xcraft-jsonviz]** : Génération de visualisations graphiques
 
 ## Détails des sources
 
@@ -246,6 +389,17 @@ const logicState = {
 };
 ```
 
+#### Gestionnaires de logique principaux
+
+- **`upsert`** : Ajoute ou met à jour une branche avec gestion des relations
+- **`delete-branch`** : Supprime une branche et nettoie les références
+- **`attach-to-parents`** : Établit des relations parent-enfant
+- **`detach-from-parents`** : Supprime des relations parent-enfant
+- **`subscribe`** : Crée un abonnement à un feed
+- **`unsubscribe`** : Supprime un abonnement et nettoie les branches
+- **`graft`** : Copie des branches entre feeds
+- **`maintenance`** : Gère le mode maintenance
+
 ### `lib/garbageCollector.js`
 
 Classe `GarbageCollector` qui implémente le nettoyage automatique :
@@ -254,6 +408,8 @@ Classe `GarbageCollector` qui implémente le nettoyage automatique :
 - **`unsubscribeBranch`** : Supprime une branche et nettoie les références
 - **`_collect`** : Supprime une branche et met à jour les relations
 - **`_purgeCollectable`** : Envoie des événements pour les branches supprimées
+- **`extractFeeds`** : Extrait les feeds contenant une branche
+- **`extractPatchFeeds`** : Extrait les feeds avec patches pour une branche
 
 Le garbage collector utilise un mécanisme de debounce (50ms) pour regrouper les opérations et optimiser les performances.
 
@@ -265,6 +421,11 @@ Fonctions pour la génération de graphiques :
 - **`buildFullLabel`**, **`buildSimpleLabel`** : Formatent les étiquettes des nœuds
 - **`getBackgroundColor`** : Détermine la couleur selon le type (worker, workitem, feeder, etc.)
 
+Le module supporte deux types de graphiques :
+
+- **Simple** : Nœuds circulaires avec étiquettes externes
+- **Complexe** : Nœuds détaillés avec informations complètes
+
 ### `widgets/warehouse-explorer/`
 
 Composants React pour l'interface d'exploration :
@@ -274,7 +435,36 @@ Composants React pour l'interface d'exploration :
 - **`view.js`** : Vue principale de l'explorateur
 - **`styles.js`** : Styles CSS pour l'interface
 
-L'explorateur utilise Cytoscape.js avec l'algorithme "dagre" pour la visualisation graphique des relations entre branches.
+#### Fonctionnalités de l'interface
+
+- **Navigation par feeds** : Liste des feeds avec sélection active
+- **Arbre hiérarchique** : Affichage des branches et leurs relations
+- **Graphe Cytoscape** : Visualisation interactive avec algorithme dagre
+- **Détection d'anomalies** : Affichage des branches orphelines et pendantes
+
+L'explorateur utilise Cytoscape.js avec l'algorithme "dagre" pour la visualisation graphique des relations entre branches, permettant une compréhension visuelle de la structure des données.
+
+### Métriques et monitoring
+
+Le warehouse expose des métriques pour le monitoring :
+
+```javascript
+const getMetrics = function (goblin) {
+  const metrics = {};
+  const state = goblin.getState();
+  for (const [feed, subs] of state.get('_subscriptions').entries()) {
+    metrics[feed] = {labels: {feed}, total: subs.get('branches').size};
+  }
+  metrics['entries.total'] = state.size;
+  return metrics;
+};
+```
+
+Ces métriques permettent de surveiller :
+
+- Le nombre de branches par feed
+- Le nombre total d'entrées dans le warehouse
+- L'utilisation mémoire et les performances
 
 ---
 
@@ -284,3 +474,5 @@ _Cette documentation a été générée automatiquement à partir des sources du
 [xcraft-core-utils]: https://github.com/Xcraft-Inc/xcraft-core-utils
 [xcraft-immutablediff]: https://github.com/Xcraft-Inc/immutable-js-diff
 [goblin-laboratory]: https://github.com/Xcraft-Inc/goblin-laboratory
+[xcraft-core-busclient]: https://github.com/Xcraft-Inc/xcraft-core-busclient
+[xcraft-jsonviz]: https://github.com/Xcraft-Inc/jsonviz
