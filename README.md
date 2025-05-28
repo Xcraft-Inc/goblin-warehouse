@@ -4,6 +4,17 @@
 
 Le module `goblin-warehouse` est un composant central de l'écosystème Xcraft qui fournit un système de stockage et de gestion d'état partagé entre les différents acteurs (Elf et Goblin). Il implémente un mécanisme sophistiqué de gestion des relations entre les entités (branches), avec un système de propriété (ownership) qui permet de suivre les dépendances entre les objets et d'effectuer un nettoyage automatique lorsque les objets ne sont plus référencés.
 
+## Sommaire
+
+- [Structure du module](#structure-du-module)
+- [Fonctionnement global](#fonctionnement-global)
+- [API publique](#api-publique)
+- [Exemples d'utilisation](#exemples-dutilisation)
+- [Explorateur de warehouse](#explorateur-de-warehouse)
+- [Tests](#tests)
+- [Interactions avec d'autres modules](#interactions-avec-dautres-modules)
+- [Détails des sources](#détails-des-sources)
+
 ## Structure du module
 
 - **Service principal** : Le cœur du module est le service `lib/service.js` qui gère l'état global
@@ -38,6 +49,75 @@ Chaque branche possède un numéro de génération qui est incrémenté à chaqu
 ### Maintenance
 
 Le warehouse dispose d'un mode de maintenance qui permet de restreindre les opérations pendant des périodes spécifiques, par exemple lors de mises à jour critiques du système.
+
+## API publique
+
+### Quêtes principales
+
+#### `upsert(branch, data, parents, feeds, generation)`
+
+Ajoute ou met à jour une branche dans le warehouse avec les données fournies, en établissant des relations avec les parents spécifiés et en l'attachant aux feeds indiqués.
+
+**Paramètres :**
+
+- `branch` : Identifiant unique de la branche
+- `data` : Données à stocker
+- `parents` : Parent(s) de la branche (string ou array)
+- `feeds` : Feed(s) où attacher la branche (string ou array)
+- `generation` : Numéro de génération (optionnel)
+
+#### `get(path, view)`
+
+Récupère les données à un chemin spécifique, avec une vue optionnelle pour filtrer les propriétés retournées.
+
+**Paramètres :**
+
+- `path` : Chemin vers les données
+- `view` : Vue pour filtrer les propriétés (optionnel)
+
+#### `query(feed, ids, type, filter, view)`
+
+Effectue une requête sur le warehouse pour trouver des branches correspondant aux critères spécifiés.
+
+**Paramètres :**
+
+- `feed` : Feed à interroger (optionnel)
+- `ids` : Liste d'IDs spécifiques (optionnel)
+- `type` : Type de branche à rechercher (optionnel)
+- `filter` : Conditions de filtrage (optionnel)
+- `view` : Propriétés à retourner (optionnel)
+
+#### `subscribe(feed, branches)`
+
+Crée un abonnement à un feed pour recevoir les mises à jour des branches spécifiées.
+
+#### `unsubscribe(feed)`
+
+Supprime un abonnement à un feed et nettoie toutes les branches associées.
+
+#### `attachToParents(branch, parents, feeds, view)`
+
+Attache une branche à des parents spécifiés dans les feeds indiqués.
+
+#### `detachFromParents(branch, parents, feed)`
+
+Détache une branche de ses parents spécifiés dans un feed particulier.
+
+#### `deleteBranch(branch)`
+
+Supprime une branche du warehouse et met à jour toutes les relations.
+
+#### `maintenance(enable, description, orcName)`
+
+Active ou désactive le mode maintenance du warehouse.
+
+#### `check()`
+
+Vérifie l'intégrité du warehouse en recherchant les branches orphelines et pendantes.
+
+#### `graph(output)`
+
+Génère une représentation graphique de l'état du warehouse au format DOT.
 
 ## Exemples d'utilisation
 
@@ -107,6 +187,26 @@ await this.quest.warehouse.graph({
 });
 ```
 
+## Explorateur de warehouse
+
+Le module inclut un explorateur visuel (`warehouse-explorer`) qui permet de :
+
+- Visualiser les feeds et leurs branches sous forme d'arbre
+- Afficher un graphe interactif des relations entre les branches
+- Détecter les branches orphelines ou pendantes
+- Explorer l'état du warehouse en temps réel
+
+L'explorateur utilise Cytoscape.js pour la visualisation graphique et l'algorithme de disposition "dagre" pour organiser les nœuds de manière hiérarchique.
+
+## Tests
+
+Le module inclut une suite de tests complète (`test/subscriptions.spec.js`) qui vérifie :
+
+- La création et suppression de branches
+- Les cascades de suppression multi-niveaux
+- La gestion des relations entre branches dans différents feeds
+- L'intégrité du système de propriété et de garbage collection
+
 ## Interactions avec d'autres modules
 
 Le warehouse est un composant fondamental de l'architecture Xcraft et interagit avec de nombreux autres modules:
@@ -118,149 +218,67 @@ Le warehouse est un composant fondamental de l'architecture Xcraft et interagit 
 
 ## Détails des sources
 
-### `warehouse.js`
+### `warehouse.js` et `warehouse-explorer.js`
 
-Point d'entrée principal qui expose les commandes Xcraft du service warehouse via `exports.xcraftCommands`.
-
-### `warehouse-explorer.js`
-
-Point d'entrée pour l'explorateur de warehouse qui expose les commandes du widget d'exploration.
+Points d'entrée qui exposent les commandes Xcraft du service warehouse et de l'explorateur via `exports.xcraftCommands`.
 
 ### `lib/service.js`
 
-Ce fichier contient le service principal du warehouse. Il définit:
+Service principal du warehouse qui définit :
 
-- L'état initial du warehouse (`logicState`) avec les structures pour les générations, souscriptions, et autres métadonnées
-- Les gestionnaires de logique pour les différentes actions (`logicHandlers`) comme upsert, delete-branch, attach-to-parents, etc.
-- Les quêtes exposées par le service (create, upsert, get, query, etc.)
-- Les mécanismes de notification des changements aux abonnés via le système de diff
+- **État initial** (`logicState`) avec les structures pour les générations, souscriptions, et métadonnées
+- **Gestionnaires de logique** (`logicHandlers`) pour les actions comme upsert, delete-branch, attach-to-parents
+- **Quêtes exposées** pour l'interaction avec le warehouse
+- **Mécanismes de notification** des changements aux abonnés via le système de diff
 
-Le service gère le cycle de vie complet des branches, depuis leur création jusqu'à leur suppression, en passant par la gestion de leurs relations et la notification des changements.
+#### Structure de l'état
 
-#### État et modèle de données
-
-L'état du warehouse comprend plusieurs sections principales :
-
-- **`_creators`** : Stocke l'identifiant du créateur pour chaque branche
-- **`_generations`** : Contient les numéros de génération et les flags de dispatch pour chaque branche
-- **`_subscriptions`** : Gère les abonnements aux feeds avec les relations parent-enfant
-- **`_patchFeeds`** : Liste des feeds configurés pour recevoir des patches
-- **`_maintenance`** : Configuration du mode maintenance
-- **`_lines`** : Gestion des lignes de mise à jour
-- **`_feedsAggregator`** : Agrégateur pour optimiser les notifications de changements
-
-#### Méthodes publiques principales
-
-**`upsert(branch, data, parents, feeds, generation)`** - Ajoute ou met à jour une branche dans le warehouse avec les données fournies, en établissant des relations avec les parents spécifiés et en l'attachant aux feeds indiqués.
-
-**`get(path, view)`** - Récupère les données à un chemin spécifique, avec une vue optionnelle pour filtrer les propriétés retournées.
-
-**`query(feed, ids, type, filter, view)`** - Effectue une requête sur le warehouse pour trouver des branches correspondant aux critères spécifiés. Supporte le filtrage par type, IDs spécifiques, et conditions personnalisées.
-
-**`subscribe(feed, branches)`** - Crée un abonnement à un feed pour recevoir les mises à jour des branches spécifiées.
-
-**`unsubscribe(feed)`** - Supprime un abonnement à un feed et nettoie toutes les branches associées.
-
-**`attachToParents(branch, parents, feeds, view)`** - Attache une branche à des parents spécifiés dans les feeds indiqués. Retourne un booléen indiquant si l'attachement a réussi.
-
-**`detachFromParents(branch, parents, feed)`** - Détache une branche de ses parents spécifiés dans un feed particulier.
-
-**`deleteBranch(branch)`** - Supprime une branche du warehouse et met à jour toutes les relations.
-
-**`maintenance(enable, description, orcName)`** - Active ou désactive le mode maintenance du warehouse, limitant les opérations aux processus autorisés.
-
-**`syncChanges(feed)`** - Force la synchronisation des changements pour un feed spécifique.
-
-**`listFeeds()`** - Retourne la liste des feeds disponibles dans le warehouse.
-
-**`check()`** - Vérifie l'intégrité du warehouse en recherchant les branches orphelines et pendantes.
-
-**`graph(output)`** - Génère une représentation graphique de l'état du warehouse au format DOT.
-
-**`has(path)`** - Vérifie l'existence d'un chemin dans l'état du warehouse.
-
-**`hasFeed(feedName)`** - Vérifie l'existence d'un feed spécifique.
-
-**`getBranchSubscriptions(branch, filters)`** - Retourne la liste des feeds qui contiennent une branche donnée, avec filtrage optionnel.
-
-**`graft(branch, fromFeed, toFeed)`** - Copie une branche et ses dépendances d'un feed vers un autre.
-
-**`acknowledge(branch, generation)`** - Confirme la réception d'une branche avec sa génération, permettant sa suppression définitive.
-
-**`release(branch)`** - Supprime immédiatement une branche et émet un événement de libération.
+```javascript
+const logicState = {
+  _creators: {}, // Créateurs de chaque branche
+  _generations: {}, // Numéros de génération et flags
+  _subscriptions: {}, // Abonnements aux feeds avec relations
+  _patchFeeds: {}, // Feeds configurés pour les patches
+  _maintenance: {}, // Configuration du mode maintenance
+  _lines: {}, // Gestion des lignes de mise à jour
+  _linesNotifyPayload: true,
+  _feedsAggregator: null, // Agrégateur pour les notifications
+};
+```
 
 ### `lib/garbageCollector.js`
 
-Implémente le système de nettoyage automatique des branches non référencées. Principales fonctionnalités:
+Classe `GarbageCollector` qui implémente le nettoyage automatique :
 
-- `updateOwnership`: Met à jour les relations parent-enfant entre les branches
-- `unsubscribeBranch`: Supprime une branche et met à jour les relations
-- `_collect`: Supprime une branche et nettoie les références associées
-- `_purgeCollectable`: Envoie des événements pour les branches supprimées
+- **`updateOwnership`** : Met à jour les relations parent-enfant
+- **`unsubscribeBranch`** : Supprime une branche et nettoie les références
+- **`_collect`** : Supprime une branche et met à jour les relations
+- **`_purgeCollectable`** : Envoie des événements pour les branches supprimées
 
-La classe `GarbageCollector` utilise un mécanisme de debounce pour regrouper les opérations de nettoyage et optimiser les performances.
-
-#### Fonctionnement du Garbage Collector
-
-Le garbage collector surveille les relations entre les branches et identifie celles qui ne sont plus référencées par aucun parent. Lorsqu'une branche devient orpheline, elle est marquée comme "collectable" et sera supprimée lors du prochain cycle de nettoyage.
-
-Le processus de nettoyage est optimisé par un mécanisme de debounce qui regroupe les opérations de suppression pour éviter de surcharger le système avec de nombreuses petites opérations.
+Le garbage collector utilise un mécanisme de debounce (50ms) pour regrouper les opérations et optimiser les performances.
 
 ### `lib/dotHelpers.js`
 
-Fournit des fonctions pour générer des représentations graphiques de l'état du warehouse:
+Fonctions pour la génération de graphiques :
 
-- `generateGraph`: Crée un graphe représentant les relations entre les branches
-- `buildFullLabel`, `buildSimpleLabel`: Formatent les étiquettes des nœuds du graphe
-- `getBackgroundColor`: Détermine la couleur d'un nœud en fonction de son type (worker, workitem, feeder, updater, dispatcher)
+- **`generateGraph`** : Crée un graphe représentant les relations entre branches
+- **`buildFullLabel`**, **`buildSimpleLabel`** : Formatent les étiquettes des nœuds
+- **`getBackgroundColor`** : Détermine la couleur selon le type (worker, workitem, feeder, etc.)
 
-Ces fonctions utilisent la bibliothèque JsonViz pour générer des graphes au format DOT qui peuvent être convertis en SVG ou d'autres formats visuels.
+### `widgets/warehouse-explorer/`
 
-### `widgets/warehouse-explorer/widget.js`
+Composants React pour l'interface d'exploration :
 
-Composant React qui fournit une interface utilisateur pour explorer et visualiser l'état du warehouse:
+- **`widget.js`** : Composant principal avec arbre des feeds et graphe interactif
+- **`service.js`** : Service Goblin qui alimente l'explorateur
+- **`view.js`** : Vue principale de l'explorateur
+- **`styles.js`** : Styles CSS pour l'interface
 
-- Affiche la liste des feeds disponibles
-- Permet de visualiser les branches d'un feed sous forme d'arbre
-- Affiche un graphe interactif des relations entre les branches en utilisant Cytoscape.js
-- Permet de détecter les branches orphelines ou pendantes
+L'explorateur utilise Cytoscape.js avec l'algorithme "dagre" pour la visualisation graphique des relations entre branches.
 
-Le composant utilise l'algorithme de disposition "dagre" pour organiser les nœuds du graphe de manière hiérarchique.
+---
 
-### `widgets/warehouse-explorer/service.js`
-
-Service Goblin qui alimente l'explorateur du warehouse:
-
-- `explore`: Récupère les informations sur un feed spécifique
-- `check`: Vérifie les branches orphelines ou pendantes
-- Construit les données pour la visualisation graphique en créant des nœuds et des liens entre eux
-
-### `widgets/warehouse-explorer/view.js`
-
-Composant React qui définit la vue principale de l'explorateur de warehouse. Il intègre:
-
-- Un conteneur principal avec un titre stylisé
-- Le composant Explorer qui affiche les données du warehouse
-
-### `widgets/warehouse-explorer/styles.js`
-
-Définit les styles CSS pour l'explorateur de warehouse, notamment:
-
-- Le style de l'arbre de visualisation avec flexbox pour une mise en page adaptative
-- Les dimensions et le padding des éléments
-
-### `test/subscriptions.spec.js`
-
-Contient des tests unitaires pour vérifier le bon fonctionnement du système de souscriptions du warehouse:
-
-- Tests de création et suppression de branches
-- Tests de cascade de suppression (lorsqu'un parent est supprimé)
-- Tests de gestion des relations entre branches dans différents feeds
-- Tests de vérification de l'intégrité des données
-
-Ces tests garantissent que le système de propriété et de garbage collection fonctionne correctement dans différents scénarios complexes, incluant les cascades de suppression multi-niveaux et la gestion des relations croisées entre feeds.
-
-_Cette documentation a été mise à jour automatiquement._
+_Cette documentation a été générée automatiquement à partir des sources du module goblin-warehouse._
 
 [xcraft-core-goblin]: https://github.com/Xcraft-Inc/xcraft-core-goblin
 [xcraft-core-utils]: https://github.com/Xcraft-Inc/xcraft-core-utils
