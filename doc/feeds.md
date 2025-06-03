@@ -110,28 +110,28 @@ Le cycle de vie d'un acteur dans le warehouse suit plusieurs étapes distinctes 
 
 ```mermaid
 sequenceDiagram
-    participant Actor
+    participant Client
     participant Warehouse
     participant GC as Garbage Collector
     participant Feeds
 
-    Actor->>Warehouse: upsert(branch, isCreating=true, creator)
+    Client->>Warehouse: upsert(branch, isCreating=true, creator)
     Warehouse->>Warehouse: Créer avec parent 'new'
     Warehouse->>Warehouse: Stocker créateur
 
-    Actor->>Warehouse: attach-to-parents(branch, realParents)
+    Client->>Warehouse: attach-to-parents(branch, realParents)
     Warehouse->>Warehouse: Attacher aux vrais parents
 
-    Actor->>Warehouse: del-creator(branch)
+    Client->>Warehouse: del-creator(branch)
     Warehouse->>Warehouse: Supprimer parent 'new'
     Warehouse->>Warehouse: Supprimer créateur
 
     loop Vie active
-        Actor->>Warehouse: upsert(branch, data, hasDispatched=true)
+        Client->>Warehouse: upsert(branch, data, hasDispatched=true)
         Warehouse->>Feeds: Propager changements (si hasDispatched)
     end
 
-    Actor->>Warehouse: delete-branch(branch)
+    Client->>Warehouse: delete-branch(branch)
     Warehouse->>GC: Détacher de tous parents
     GC->>GC: Collection en cascade des orphelins
     GC->>GC: Supprimer branches collectées
