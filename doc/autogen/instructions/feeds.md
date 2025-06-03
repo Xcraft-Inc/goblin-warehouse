@@ -1,6 +1,6 @@
 ## 🎯 Objectifs
 
-- Décrire en détail le fonctionnement du systome d'ownership et de feeds
+- Décrire en détail le fonctionnement du système d'ownership et de feeds
   - A quoi ça sert, pourquoi faire
   - Comment ça fonctionne dans les moindres détails
   - Comment se déroule le cycle de vie des feeds
