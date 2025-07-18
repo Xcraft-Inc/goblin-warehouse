@@ -5,7 +5,14 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Epsitec SA",
+  "contributors": [
+    "Samuel Loup <loup@epsitec.ch>",
+    "Mathieu Schroeter <schroeter@epsitec.ch>",
+    "Gillian Fries <fries@epsitec.ch>",
+    "Jonny Quarta <quarta@epsitec.ch>",
+    "Catia Guidi <guidi@epsitec.ch>"
+  ],
   "license": "MIT",
   "config": {
     "xcraft": {
