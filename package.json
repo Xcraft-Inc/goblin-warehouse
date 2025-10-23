@@ -25,6 +25,7 @@
     "lodash": "^4.17.11",
     "xcraft-core-busclient": "^5.0.0",
     "xcraft-core-goblin": "^5.7.0",
+    "xcraft-core-log": "^2.2.1",
     "xcraft-core-utils": "^4.0.0",
     "xcraft-immutablediff": "^1.0.0",
     "xcraft-jsonviz": "^0.3.0"
