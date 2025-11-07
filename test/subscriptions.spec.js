@@ -783,6 +783,23 @@ describe('goblin.warehouse', function () {
   });
 
   describe('copy branches', function () {
+    this.afterEach(async function () {
+      await runner.it(async function () {
+        const feeds = ['A', 'B'].map((i) => `feed${i}`);
+        for (const feed of feeds) {
+          if (
+            await this.quest.warehouse.has({path: `_subscriptions.${feed}`})
+          ) {
+            await this.quest.warehouse.unsubscribe({feed});
+          }
+        }
+        const branches = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(
+          (i) => `tests@${i}`
+        );
+        await this.quest.warehouse.removeBatch({branches});
+      });
+    });
+
     /* FEED A
      * |- tests@1
      * | |- tests@3
