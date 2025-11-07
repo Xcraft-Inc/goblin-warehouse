@@ -794,6 +794,8 @@ describe('goblin.warehouse', function () {
      *   |- tests@4
      *     |- tests@5
      *
+     * GRAFT tests@4 from A to B
+     *
      * FEED B                 FEED B
      * |- tests@6             |- tests@6
      *                        |- tests@1
@@ -802,20 +804,8 @@ describe('goblin.warehouse', function () {
      *                        |- tests@2
      *                        |  |- tests@3
      *                           |- tests@4
-     *
-     * BEFORE
-     *  feed: feedA
-     *    subscriptions: tests@1, tests@2
-     *  feed: feedB
-     *    subscriptions: tests@6
-     *
-     * AFTER
-     *  feed: tests1
-     *    subscriptions: tests@1, tests@2
-     *  feed: tests2
-     *    subscriptions: tests@1, tests@2, tests@6
      */
-    it('graft', async function () {
+    it('graft topdown', async function () {
       this.timeout(10000);
       await runner.it(async function () {
         await this.quest.warehouse.subscribe({
