@@ -1,4 +1,4 @@
-# 📘 Documentation du module goblin-warehouse
+# 📘 goblin-warehouse
 
 ## Aperçu
 
@@ -11,100 +11,100 @@ Le module `goblin-warehouse` est un composant central de l'écosystème Xcraft q
 - [Exemples d'utilisation](#exemples-dutilisation)
 - [Interactions avec d'autres modules](#interactions-avec-dautres-modules)
 - [Détails des sources](#détails-des-sources)
+- [Licence](#licence)
 
 ## Structure du module
 
 Le module est organisé autour de plusieurs composants clés :
 
-- **Service principal** (`lib/service.js`) : Le cœur du module qui gère l'état global du warehouse
+- **Service principal** (`lib/service.js`) : Le cœur du module, acteur Goblin singleton qui gère l'état global du warehouse
 - **Garbage Collector** (`lib/garbageCollector.js`) : Système de nettoyage automatique des entités non référencées
-- **Explorateur visuel** (`widgets/warehouse-explorer/`) : Interface graphique pour visualiser et analyser l'état
-- **Utilitaires graphiques** (`lib/dotHelpers.js`) : Génération de représentations visuelles des relations
-- **Tests complets** (`test/subscriptions.spec.js`) : Suite de tests pour valider le comportement
+- **Explorateur visuel** (`widgets/warehouse-explorer/`) : Interface graphique pour visualiser et analyser l'état du warehouse
+- **Utilitaires graphiques** (`lib/dotHelpers.js`) : Génération de représentations visuelles des relations entre branches
+- **Tests** (`test/subscriptions.spec.js`) : Suite de tests validant le comportement des subscriptions et du garbage collector
 
 ## Fonctionnement global
 
-Le warehouse fonctionne comme une base de données en mémoire qui stocke l'état des acteurs Goblin et Elf. Chaque entité stockée est appelée une "branche" (branch) et peut avoir des relations parent-enfant avec d'autres branches.
+Le warehouse fonctionne comme une base de données en mémoire qui stocke l'état des acteurs Goblin et Elf. Chaque entité stockée est appelée une **branche** (branch) et peut entretenir des relations parent-enfant avec d'autres branches au sein de **feeds** (canaux de données).
 
 ### Architecture des données
 
 ```
 Warehouse State
-├── _creators: {}           # Créateurs de chaque branche
-├── _generations: {}        # Numéros de génération et flags
-├── _subscriptions: {}      # Abonnements aux feeds avec relations
-├── _patchFeeds: {}        # Feeds configurés pour les patches
-├── _maintenance: {}       # Configuration du mode maintenance
-├── _lines: {}             # Gestion des lignes de mise à jour
-└── [branches]: {}         # Données des branches elles-mêmes
+├── _creators: {}           # Créateurs de chaque branche (traçabilité)
+├── _generations: {}        # Numéros de génération et flags de dispatch
+├── _subscriptions: {}      # Abonnements aux feeds avec relations parent/enfant
+├── _patchFeeds: {}         # Feeds configurés pour la livraison de patches
+├── _maintenance: {}        # Configuration du mode maintenance
+├── _lines: {}              # Gestion des notifications de lignes
+├── _linesNotifyPayload: bool  # Flag de notification de payload
+├── _feedsAggregator: ...   # Agrégateur pour optimiser les notifications
+└── [branch@id]: {}         # Données des branches elles-mêmes
 ```
 
 ### Système de propriété (Ownership)
 
-Le warehouse implémente un système de propriété sophistiqué où :
+Le warehouse implémente un graphe orienté de relations :
 
-1. **Branches** : Entités stockées avec un identifiant unique
-2. **Parents/Enfants** : Relations hiérarchiques entre branches
-3. **Feeds** : Canaux de données qui regroupent des branches
-4. **Générations** : Versioning pour le suivi des changements
+- **Branches** : Entités identifiées par `namespace@id` (instances) ou `namespace` (singletons)
+- **Parents/Enfants** : Relations hiérarchiques maintenues dans les deux sens
+- **Feeds** : Canaux regroupant des branches pour diffusion aux clients
+- **Générations** : Versioning pour le suivi des changements et les acknowledgments
 
-### Feeds et Subscriptions
+### Feeds et système de patches
 
-Les "feeds" sont des canaux de données auxquels les clients peuvent s'abonner :
+Les feeds sont des canaux de données auxquels les clients s'abonnent pour recevoir les mises à jour en temps réel :
 
-- **Subscription** : Abonnement à un feed pour recevoir les mises à jour
-- **Patch system** : Envoi optimisé des changements via des diffs
-- **Aggregation** : Regroupement des notifications pour optimiser les performances
+1. **Première livraison** : L'état complet du feed est envoyé via l'événement `<feed>.changed` avec `_xcraftPatch: false`
+2. **Mises à jour suivantes** : Seuls les diffs (patches) sont envoyés avec `_xcraftPatch: true`
+3. **Agrégation** : Un `MapAggregator` regroupe les notifications en fenêtres de 50ms pour réduire la charge
 
 ### Garbage Collection automatique
 
-Le garbage collector surveille les relations et supprime automatiquement :
+Le `GarbageCollector` surveille les relations et supprime automatiquement :
 
-- Les branches sans parents (orphelines)
-- Les branches non référencées dans aucun feed
+- Les branches sans parents valides (immédiatement collectées à l'upsert)
 - Les cascades de suppression lors de la suppression d'un parent
+- Les feeds vides après suppression de toutes leurs branches
+- Les branches ORC (`goblin-orc@`) qui déclenchent un auto-release
 
-### Système de génération et versioning
+Le debouncing à 50ms évite les suppressions prématurées lors d'opérations en rafale. L'événement `warehouse.released` est émis en batch pour notifier les branches collectées.
 
-- Chaque branche possède un numéro de génération incrémenté à chaque modification
-- Permet d'éviter les conflits lors des mises à jour concurrentes
-- Support des acknowledgments pour confirmer la réception des changements
+### Mode maintenance
+
+Le mode maintenance permet de restreindre les opérations du warehouse à un ORC spécifique (`orcName`), empêchant les modifications concurrentes lors des mises à jour critiques.
 
 ## Exemples d'utilisation
 
 ### Gestion basique des branches
 
 ```javascript
-// Créer et abonner un feed
+// S'abonner à un feed
 await this.quest.warehouse.subscribe({
   feed: 'myFeed',
   branches: ['entity@1', 'entity@2'],
 });
 
-// Ajouter une entité avec relations
+// Ajouter une entité avec relations de propriété
 await this.quest.warehouse.upsert({
   branch: 'entity@3',
-  data: {id: 'entity@3', name: 'My Entity', status: 'active'},
+  data: {id: 'entity@3', name: 'Mon entité', status: 'active'},
   feeds: 'myFeed',
   parents: 'entity@1',
   generation: 1,
 });
 
 // Récupérer des données
-const entity = await this.quest.warehouse.get({
-  path: 'entity@3',
-});
+const entity = await this.quest.warehouse.get({path: 'entity@3'});
 
-// Récupérer une propriété spécifique
-const name = await this.quest.warehouse.get({
-  path: 'entity@3.name',
-});
+// Vérifier l'existence
+const exists = await this.quest.warehouse.has({path: 'entity@3'});
 ```
 
 ### Requêtes avancées
 
 ```javascript
-// Recherche par type avec filtres
+// Recherche par type avec filtres (AND entre critères)
 const activeEntities = await this.quest.warehouse.query({
   feed: 'myFeed',
   type: 'entity',
@@ -114,15 +114,21 @@ const activeEntities = await this.quest.warehouse.query({
 
 // Recherche par IDs spécifiques
 const specificEntities = await this.quest.warehouse.query({
-  ids: ['entity@1', 'entity@3', 'entity@5'],
+  ids: ['entity@1', 'entity@3'],
   view: ['id', 'name'],
+});
+
+// Recherche multi-types
+const mixed = await this.quest.warehouse.query({
+  feed: 'myFeed',
+  type: ['actor1', 'actor2'],
 });
 ```
 
 ### Gestion des relations hiérarchiques
 
 ```javascript
-// Attacher une branche à plusieurs parents
+// Attacher une branche à un parent supplémentaire
 await this.quest.warehouse.attachToParents({
   branch: 'child@1',
   parents: ['parent@1', 'parent@2'],
@@ -130,7 +136,7 @@ await this.quest.warehouse.attachToParents({
   generation: 2,
 });
 
-// Détacher d'un parent spécifique
+// Détacher d'un parent (déclenche une collecte si plus aucun parent)
 await this.quest.warehouse.detachFromParents({
   branch: 'child@1',
   parents: ['parent@1'],
@@ -140,14 +146,14 @@ await this.quest.warehouse.detachFromParents({
 // Vérifier les abonnements d'une branche
 const feeds = await this.quest.warehouse.getBranchSubscriptions({
   branch: 'child@1',
-  filters: ['system'], // Exclure les feeds système
+  filters: ['system'],
 });
 ```
 
 ### Opérations par lot
 
 ```javascript
-// Mise à jour en lot
+// Mise à jour de plusieurs branches en une fois
 await this.quest.warehouse.upsertInBatch({
   branches: {
     'item@1': {id: 'item@1', value: 100},
@@ -158,7 +164,7 @@ await this.quest.warehouse.upsertInBatch({
   feeds: 'itemsFeed',
 });
 
-// Suppression en lot
+// Suppression en lot (contourne le système d'ownership)
 await this.quest.warehouse.removeBatch({
   branches: ['item@1', 'item@2', 'item@3'],
 });
@@ -167,11 +173,19 @@ await this.quest.warehouse.removeBatch({
 ### Greffage entre feeds
 
 ```javascript
-// Copier une branche et ses dépendances vers un autre feed
+// Copier une branche et ses ancêtres vers un autre feed (top-down)
 await this.quest.warehouse.graft({
-  branch: 'complexEntity@1',
+  branch: 'entity@4',
   fromFeed: 'sourceFeed',
   toFeed: 'targetFeed',
+});
+
+// Copier une branche et ses descendants (bottom-up)
+await this.quest.warehouse.graft({
+  branch: 'entity@4',
+  fromFeed: 'sourceFeed',
+  toFeed: 'targetFeed',
+  reverse: true,
 });
 ```
 
@@ -185,173 +199,221 @@ await this.quest.warehouse.maintenance({
   orcName: 'maintenance-orc',
 });
 
-// Vérifier l'intégrité
+// Vérifier l'intégrité du warehouse
 await this.quest.warehouse.check();
 
-// Obtenir des métriques
+// Lister les feeds actifs
 const feeds = await this.quest.warehouse.listFeeds();
-const hasSpecificFeed = await this.quest.warehouse.hasFeed({
-  feedName: 'myFeed',
-});
 
-// Forcer la synchronisation
+// Forcer la synchronisation immédiate d'un feed
 await this.quest.warehouse.syncChanges({feed: 'myFeed'});
 
-// Générer un graphique de l'état
-await this.quest.warehouse.graph({
-  output: '/tmp/warehouse-graphs',
-});
+// Renvoyer l'état complet d'un feed
+await this.quest.warehouse.resend({feed: 'myFeed'});
+
+// Générer des graphiques de visualisation
+await this.quest.warehouse.graph({output: '/tmp/warehouse-graphs'});
 ```
 
 ## Interactions avec d'autres modules
 
 Le warehouse est un composant fondamental qui interagit avec l'ensemble de l'écosystème Xcraft :
 
-- **[xcraft-core-goblin]** : Utilise les mécanismes de base pour les quêtes et événements
-- **[xcraft-core-utils]** : MapAggregator pour l'agrégation efficace des mises à jour
-- **[xcraft-immutablediff]** : Calcul optimisé des différences entre états
-- **[goblin-laboratory]** : Alimentation des composants React via les feeds
-- **[xcraft-core-busclient]** : Communication événementielle sur le bus Xcraft
-- **[xcraft-jsonviz]** : Génération de visualisations graphiques au format DOT
+- **[xcraft-core-goblin]** : Fournit les mécanismes de base Goblin (quêtes, Shredder, dispatch)
+- **[xcraft-core-utils]** : `MapAggregator` pour l'agrégation efficace des notifications de changement
+- **[xcraft-core-busclient]** : Communication événementielle pour l'émission des événements `warehouse.released`
+- **[xcraft-core-log]** : Journalisation des avertissements et erreurs internes
+- **[xcraft-immutablediff]** : Calcul optimisé des diffs entre états Immutable.js pour les patches
+- **[xcraft-jsonviz]** : Génération de graphiques au format DOT (Graphviz)
+
+Le warehouse alimente indirectement tous les composants React de l'application via le mécanisme de feeds, qui transmet les mises à jour d'état aux clients abonnés ([goblin-laboratory] agit comme pont entre le warehouse et les widgets).
 
 ## Détails des sources
 
 ### `warehouse.js` et `warehouse-explorer.js`
 
-Points d'entrée qui exposent les commandes Xcraft via `exports.xcraftCommands`, redirigeant vers les services respectifs.
+Points d'entrée exposant les commandes Xcraft via `exports.xcraftCommands`. `warehouse.js` redirige vers `lib/service.js` et `warehouse-explorer.js` redirige vers `widgets/warehouse-explorer/service.js`. Ces fichiers permettent au framework de découvrir et charger dynamiquement les commandes sur le bus Xcraft au démarrage.
 
 ### `lib/service.js`
 
-Service principal implémentant un acteur Goblin singleton qui gère :
+Service principal implémentant un acteur **Goblin singleton**. Il est initialisé via `Goblin.createSingle` et expose ses quêtes sur le bus Xcraft.
 
 #### État et modèle de données
 
-L'état du warehouse est structuré autour de plusieurs collections :
-
-- **`_creators`** : Mapping branch → créateur pour traçabilité
-- **`_generations`** : Versioning avec numéros de génération et flags de dispatch
-- **`_subscriptions`** : Structure hiérarchique des feeds et leurs branches
-- **`_patchFeeds`** : Configuration des feeds supportant les patches
-- **`_maintenance`** : État du mode maintenance
-- **`_lines`** : Gestion des notifications de lignes
-- **`_feedsAggregator`** : Agrégateur pour optimiser les notifications
+| Champ                 | Type                                                               | Description                                                           |
+| --------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `_creators`           | `{[branch]: creator}`                                              | Créateur de chaque branche en cours de création                       |
+| `_generations`        | `{[branch]: {generation, hasDispatched}}`                          | Versioning et flag de dispatch de chaque branche                      |
+| `_subscriptions`      | `{[feed]: {branches: {[branch]: {parents, children}}, views: {}}}` | Structure complète des abonnements                                    |
+| `_patchFeeds`         | `{[feed]: true}`                                                   | Feeds activés pour la livraison de patches                            |
+| `_maintenance`        | `{enable, description, orcName}`                                   | Configuration du mode maintenance                                     |
+| `_lines`              | `{[lineId]: {[orcName$token]: count}}`                             | Compteurs de lignes de mise à jour                                    |
+| `_linesNotifyPayload` | `boolean`                                                          | Indique si le payload doit être inclus dans la notification de lignes |
+| `_feedsAggregator`    | `MapAggregator`                                                    | Instance d'agrégateur pour les notifications de changement            |
+| `[branch@id]`         | `object`                                                           | Données effectives de chaque branche                                  |
 
 #### Méthodes publiques
 
-- **`upsert(branch, data, parents, feeds, generation)`** — Ajoute ou met à jour une branche avec gestion complète des relations et notifications aux feeds abonnés.
-- **`get(path, view)`** — Récupère des données à un chemin spécifique avec support des vues pour filtrer les propriétés retournées.
-- **`query(feed, ids, type, filter, view)`** — Effectue des requêtes complexes avec support des filtres AND et des vues personnalisées.
-- **`subscribe(feed, branches)`** — Crée un abonnement à un feed pour recevoir les mises à jour en temps réel.
-- **`unsubscribe(feed)`** — Supprime un abonnement et déclenche le nettoyage automatique des branches orphelines.
-- **`attachToParents(branch, parents, feeds, view)`** — Établit des relations parent-enfant avec validation de l'existence des parents.
-- **`detachFromParents(branch, parents, feed)`** — Supprime des relations avec nettoyage automatique si la branche devient orpheline.
-- **`deleteBranch(branch)`** — Supprime une branche et déclenche les cascades de nettoyage appropriées.
-- **`maintenance(enable, description, orcName)`** — Contrôle le mode maintenance pour restreindre les opérations pendant les mises à jour critiques.
-- **`check()`** — Vérifie l'intégrité en détectant les branches orphelines et pendantes.
-- **`graph(output)`** — Génère des représentations visuelles au format DOT pour l'analyse et le débogage.
-- **`syncChanges(feed)`** — Force la synchronisation immédiate des changements pour un feed spécifique.
-- **`listFeeds()`** — Retourne la liste des feeds actifs (excluant les feeds système).
-- **`graft(branch, fromFeed, toFeed)`** — Copie une branche et ses dépendances entre feeds pour la réorganisation des données.
+- **`upsert(branch, data, parents, feeds, generation)`** — Ajoute ou met à jour une branche. Gère les relations d'ownership, met à jour les générations, et notifie les feeds abonnés via le `_feedsAggregator`. Les branches sans parents valides dans aucun feed sont immédiatement collectées.
+
+- **`upsertInBatch(branches, parents, feeds)`** — Effectue plusieurs `upsert` successifs pour un ensemble de branches partageant les mêmes parents et feeds. Optimisé pour les mises à jour groupées.
+
+- **`get(path, view)`** — Récupère la valeur à un chemin donné dans l'état. Supporte un paramètre `view` (liste de propriétés) pour filtrer le résultat via `Shredder.pluck`.
+
+- **`has(path)`** — Vérifie l'existence d'un chemin dans l'état du warehouse.
+
+- **`hasFeed(feedName)`** — Vérifie si un feed est actuellement actif dans les subscriptions.
+
+- **`query(feed, ids, type, filter, view)`** — Requête avancée sur l'état. Filtre par type (préfixe avant `@`), par IDs, et applique des filtres de propriétés (AND). Supporte les vues pour réduire les données retournées. Si `feed` est fourni, restreint la recherche aux branches de ce feed.
+
+- **`subscribe(feed, branches)`** — Crée ou met à jour un abonnement à un feed. Enregistre le feed comme patch-feed et initialise les relations d'ownership pour chaque branche. Émet `<feed-subscriptions-changed>`.
+
+- **`unsubscribe(feed)`** — Supprime un abonnement et déclenche la collecte en cascade de toutes les branches du feed. Émet `<feed-subscriptions-changed>`.
+
+- **`feedSubscriptionAdd(feed, branch, parents)`** — Ajoute dynamiquement une branche à un feed existant via `attach-to-parents`.
+
+- **`feedSubscriptionDel(feed, branch, parents)`** — Retire dynamiquement une branche d'un feed via `detach-from-parents`.
+
+- **`attachToParents(branch, generation, parents, feeds, view)`** — Établit des relations parent-enfant avec validation rigoureuse. Si un parent est introuvable, l'attachement est refusé. Retourne `true` si l'attachement est effectif. Supporte optionnellement une vue pour restreindre les données diffusées.
+
+- **`detachFromParents(branch, parents, feed)`** — Supprime des relations parent-enfant. Si la branche n'a plus de parents dans un feed, elle est collectée. Déclenche la désinscription du feed si la branche principale du feed disparaît.
+
+- **`deleteBranch(branch)`** — Supprime une branche en déclenchant `unsubscribeBranch` sur l'ensemble des feeds. Les branches `goblin-orc@` déclenchent un auto-release.
+
+- **`graft(branch, fromFeed, toFeed, reverse)`** — Copie une sous-arborescence d'un feed à un autre. En mode normal (top-down), copie la branche et tous ses ancêtres. En mode `reverse` (bottom-up), copie la branche et tous ses descendants.
+
+- **`acknowledge(branch, generation)`** — Confirme la suppression d'une branche en vérifiant que la génération correspond. Si validé, supprime la branche et sa génération de l'état.
+
+- **`release(branch)`** — Supprime explicitement une branche de l'état via `removeBatch` et émet l'événement `released`.
+
+- **`removeBatch(branches)`** — Supprime plusieurs branches et leurs générations directement de l'état, sans passer par le système d'ownership.
+
+- **`resend(feed)`** — Renvoie l'état complet d'un feed à tous ses abonnés, en réinitialisant l'historique des patches pour forcer une livraison complète.
+
+- **`getCreator(branch)`** — Retourne le créateur enregistré d'une branche en cours de création.
+
+- **`delCreator(branch)`** — Supprime le créateur d'une branche et la détache du parent virtuel `new`.
+
+- **`getBranchSubscriptions(branch, filters)`** — Retourne la liste des feeds contenant une branche donnée, avec filtrage optionnel par préfixe.
+
+- **`requestLineUpdate(type, lineId, orcName, token, generation)`** — Gère les compteurs de lignes de mise à jour (add/delete). Émet `lines-updated` avec le payload des lignes si nécessaire.
+
+- **`maintenance(enable, description, orcName)`** — Active ou désactive le mode maintenance. En mode actif, seul l'ORC désigné peut effectuer des opérations.
+
+- **`check()`** — Analyse l'état pour détecter les branches orphelines (parents manquants dans les feeds) et les branches pendantes (présentes dans l'état mais absentes de tous les feeds). Journalise les résultats.
+
+- **`checkOrphan()`** — Retourne la liste des branches dont un parent est référencé dans un feed mais absent de l'état.
+
+- **`checkDangling()`** — Retourne la liste des branches présentes dans l'état mais non référencées dans aucun feed.
+
+- **`status()`** — Journalise l'état complet des subscriptions et des générations pour débogage.
+
+- **`graph(output)`** — Génère deux fichiers `.dot` dans le répertoire `output` : un graphique simple (layout `fdp`) et un graphique détaillé (layout `dot`), horodatés.
+
+- **`syncChanges(feed)`** — Force le `_feedsAggregator` à livrer immédiatement les changements en attente pour un feed.
+
+- **`listFeeds()`** — Retourne la liste des feeds actifs, en excluant les feeds système (`system*` et `null`).
 
 ### `lib/garbageCollector.js`
 
-Classe spécialisée dans la gestion automatique du cycle de vie des branches :
+Classe `GarbageCollector` spécialisée dans la gestion du cycle de vie des branches. Elle est instanciée une seule fois au niveau du module avec un callback `feedDispose`.
 
 #### Fonctionnement du garbage collection
 
-Le garbage collector implémente un algorithme sophistiqué de nettoyage :
+1. **`_collect`** : Retire une branche d'un feed en mettant à jour les relations bidirectionnelles parents/enfants. Si un enfant n'a plus de parents dans ce feed, il est ajouté à la liste de collecte pour traitement en cascade. Si la branche n'est plus dans aucun feed, elle est ajoutée à `_collectable` pour émission de l'événement `warehouse.released` avec debounce de 50ms.
 
-1. **Détection des orphelins** : Identification des branches sans parents valides
-2. **Cascade de suppression** : Propagation automatique des suppressions
-3. **Optimisation par lot** : Regroupement des opérations pour les performances
-4. **Debouncing** : Délai de 50ms pour éviter les suppressions prématurées
+2. **`_purgeCollectable`** : Émet l'événement `warehouse.released` en batches de 50 entrées contenant les branches collectées et leur génération.
+
+3. **Auto-release** : Les branches `goblin-orc@` sont supprimées de l'état immédiatement sans attendre un `acknowledge`.
 
 #### Méthodes principales
 
-- **`updateOwnership(state, branch, parents, feeds, isCreating, creator)`** — Met à jour les relations de propriété avec validation des parents et gestion des créateurs.
-- **`unsubscribeBranch(state, branch, feed, autoRelease)`** — Supprime une branche d'un ou tous les feeds avec nettoyage en cascade.
-- **`extractFeeds(state, branch)`** — Identifie tous les feeds contenant une branche spécifique.
-- **`extractPatchFeeds(state, branch)`** — Filtre les feeds configurés pour les patches contenant la branche.
+- **`updateOwnership(state, immState, branch, parents, feeds, isCreating, creator)`** — Met à jour les relations de propriété pour une branche dans plusieurs feeds. Valide l'existence de tous les parents ; si un parent est manquant, la branche est immédiatement collectée. Gère le marqueur `new` pour les branches en cours de création.
+
+- **`unsubscribeBranch(state, branch, feed, autoRelease)`** — Point d'entrée principal du GC. Lance une boucle de collecte qui propage les suppressions aux enfants orphelins.
+
+- **`getOwnership(state, path)`** — Récupère ou initialise une structure d'ownership `{parents: {}, children: {}}`.
+
+- **`inFeeds(state, branch)`** — Vérifie si une branche est présente dans au moins un feed.
+
+- **`inFeed(state, feed, branch)`** — Vérifie si une branche est présente dans un feed spécifique.
+
+- **`inPatchFeed(state, feed, branch)`** — Vérifie si une branche est dans un feed configuré pour les patches.
+
+- **`extractFeeds(state, branch)`** — Retourne un mapping `{feed: {branch: true}}` pour tous les feeds contenant la branche.
+
+- **`extractPatchFeeds(state, branch)`** — Retourne la liste des feeds patch contenant la branche.
 
 ### `lib/dotHelpers.js`
 
-Utilitaires pour la génération de graphiques de visualisation :
+Utilitaires pour la génération de graphiques Graphviz (format DOT) via [xcraft-jsonviz].
 
-#### Fonctionnalités de visualisation
+**`generateGraph({type, layout}, state)`** — Génère un objet `JsonViz` représentant l'ensemble des feeds et leurs relations. Supporte deux modes de rendu : `'simple'` (nœuds circulaires compacts) et `'complexe'` (tableaux HTML détaillés avec métadonnées de génération et d'état).
 
-- **Types de graphiques** : Support des modes simple (circulaire) et complexe (détaillé)
-- **Coloration sémantique** : Couleurs différentes selon le type d'acteur (worker, workitem, feeder, etc.)
-- **Layouts multiples** : Support des algorithmes fdp et dot pour différents types d'analyse
-- **Métadonnées** : Affichage des informations de génération et d'état
+La coloration sémantique des nœuds reflète le type d'acteur selon le suffixe du namespace : `-worker` (cyan), `-workitem` (magenta), `-feeder` (jaune), `-updater` (vert), `-dispatcher` (bleu), autres (gris).
 
-#### Méthodes principales
+### `widgets/warehouse-explorer/service.js`
 
-- **`generateGraph({type, layout}, state)`** — Génère un graphique complet avec tous les feeds et leurs relations.
-- **`buildFullLabel(state, branch, ownOwner, index)`** — Crée des étiquettes détaillées avec métadonnées complètes.
-- **`buildSimpleLabel(state, branch, ownOwner, index)`** — Génère des étiquettes simplifiées pour les vues d'ensemble.
+Service Goblin (acteur instanciable, non singleton) dédié à l'interface d'exploration. Expose trois quêtes principales :
 
-### `widgets/warehouse-explorer/`
+- **`create(desktopId)`** — Initialise l'explorateur en récupérant la liste des feeds actifs depuis le warehouse.
+- **`explore(type, value)`** — Charge la structure d'un feed spécifique pour visualisation (branches, parents, enfants).
+- **`check()`** — Lance les vérifications d'intégrité (`checkDangling`, `checkOrphan`) et stocke les résultats dans l'état.
+- **`delete()`** — Destructeur de l'instance (vide).
 
-Interface graphique complète pour l'exploration et l'analyse du warehouse :
+### `widgets/warehouse-explorer/widget.js`
 
-#### `service.js`
+Composant React principal (`WarehouseExplorer`) intégrant une interface à deux panneaux :
 
-Service Goblin dédié à l'explorateur qui fournit :
+**Panneau gauche** : liste cliquable des feeds actifs (boutons) et arbre hiérarchique (`SubscriptionTree`) affichant les branches du feed sélectionné via le composant `Tree` de goblin-gadgets.
 
-- **Navigation par feeds** : Exploration hiérarchique des structures de données
-- **Détection d'anomalies** : Identification automatique des problèmes d'intégrité
-- **Génération de graphiques** : Conversion des données en format compatible Cytoscape
+**Panneau droit** : graphique interactif (`Graph` / `SubGraph`) utilisant [react-cytoscapejs] avec l'algorithme de layout `dagre` (orientation gauche-droite). Les nœuds représentent les branches, les arêtes les relations parent/enfant. Le composant `Graph` gère l'adaptation Immutable.js via les méthodes `getImm`, `toJsonImm` et `diffImm`.
 
-#### `widget.js`
+Les deux sous-composants (`SubGraph`, `Tree1`, `WarehouseExplorer`) utilisent `Widget.connect` pour se connecter à l'état du backend warehouse-explorer.
 
-Composant React principal intégrant :
+**Exemple d'utilisation** :
 
-- **Interface à deux panneaux** : Liste des feeds et visualisation graphique
-- **Arbre hiérarchique** : Navigation dans la structure des branches
-- **Graphique interactif** : Visualisation Cytoscape avec algorithme dagre
-- **Gestion d'état** : Connexion au backend via le système Widget.connect
+```jsx
+<Explorer id={workitemId} desktopId={desktopId} />
+```
 
-#### `view.js`
+Props connectées via `Widget.connect` : `subs` (liste des feeds), `sub` (feed sélectionné), `orphan` (résultats de vérification), `dangling` (résultats de vérification).
 
-Vue principale de l'explorateur avec interface utilisateur complète et navigation intuitive.
+### `widgets/warehouse-explorer/view.js`
 
-#### `styles.js`
+Vue principale (`WarehouseExplorerView`) qui compose l'interface complète : un titre avec icône de base de données et le widget `Explorer`. Dérive de `View` fourni par goblin-laboratory.
 
-Définition des styles CSS pour l'interface, optimisés pour la visualisation de données complexes.
+### `widgets/warehouse-explorer/styles.js`
+
+Définit le style `tree` pour le conteneur de l'arbre hiérarchique : `flexGrow: 1`, `display: flex`, `flexDirection: column`, permettant à l'arbre d'occuper tout l'espace disponible.
 
 ### `test/subscriptions.spec.js`
 
-Suite de tests complète validant tous les aspects du warehouse :
+Suite de tests Mocha/Chai validant le comportement du warehouse via `Elf.Runner`. Les tests couvrent :
 
-#### Tests de base
+**Tests de base** : `upsertHas` (ajout et vérification), `collectSingle` (collecte d'une branche sans parent valide), `collectedBecauseNoSubscriber` (collecte immédiate si le feed parent n'existe pas dans les subscriptions).
 
-- **`upsertHas`** : Validation de l'ajout et de la vérification de présence
-- **`collectSingle`** : Test du garbage collection pour les branches isolées
+**Tests de cascade** : `collectSimpleCascade` (suppression en cascade linéaire), `collectMultiCascade` (suppression en cascade arborescente multi-niveaux).
 
-#### Tests de cascade
+**Tests multi-feeds** : `subTwoFeeds` (partage de branche entre feeds avec suppression sélective), `subTwoDeepFeeds` (propriété multiple avec conservation inter-feeds), `subExtraDeepFeeds` (hiérarchies profondes avec détachement partiel), `subAndUnsubFeed` (cycle complet d'abonnement/désabonnement).
 
-- **`collectSimpleCascade`** : Validation des suppressions en cascade simples
-- **`collectMultiCascade`** : Test des cascades complexes multi-niveaux
-- **`subExtraDeepFeeds`** : Validation des hiérarchies profondes avec multiple feeds
+**Tests de greffage** : `graft topdown` (copie ascendante d'une branche vers un autre feed), `graft bottomup` (copie descendante avec `reverse: true`).
 
-#### Tests multi-feeds
+**Tests de relations** : `attachParents` (attachement dynamique à un parent supplémentaire).
 
-- **`subTwoFeeds`** : Gestion des branches partagées entre feeds
-- **`subTwoDeepFeeds`** : Relations complexes avec propriété multiple
-- **`graft`** : Validation du greffage entre feeds
+## Licence
 
-#### Tests d'intégrité
-
-- **`attachParents`** : Validation de l'attachement dynamique
-- **`subAndUnsubFeed`** : Cycle complet d'abonnement/désabonnement
+Ce module est distribué sous [licence MIT](./LICENSE).
 
 ---
 
-_Cette documentation a été mise à jour automatiquement à partir des sources du module goblin-warehouse._
-
 [xcraft-core-goblin]: https://github.com/Xcraft-Inc/xcraft-core-goblin
 [xcraft-core-utils]: https://github.com/Xcraft-Inc/xcraft-core-utils
-[xcraft-immutablediff]: https://github.com/Xcraft-Inc/immutable-js-diff
-[goblin-laboratory]: https://github.com/Xcraft-Inc/goblin-laboratory
 [xcraft-core-busclient]: https://github.com/Xcraft-Inc/xcraft-core-busclient
+[xcraft-core-log]: https://github.com/Xcraft-Inc/xcraft-core-log
+[xcraft-immutablediff]: https://github.com/Xcraft-Inc/immutable-js-diff
 [xcraft-jsonviz]: https://github.com/Xcraft-Inc/jsonviz
+[goblin-laboratory]: https://github.com/Xcraft-Inc/goblin-laboratory
+[react-cytoscapejs]: https://github.com/plotly/react-cytoscapejs
+
+_Ce contenu a été généré par IA_
